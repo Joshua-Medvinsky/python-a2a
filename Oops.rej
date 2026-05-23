@@ -1,0 +1,9 @@
+@@ -45,7 +45,7 @@
+         if not callable(self.condition):
+             # Parse condition string as a boolean expression
+-            self.condition_func = lambda: eval(self.condition, {"agent": self.agent})
++            raise ValueError("Condition must be a callable, not a string. Use lambda instead.")
+         else:
+             self.condition_func = self.condition
+ 
+ 
