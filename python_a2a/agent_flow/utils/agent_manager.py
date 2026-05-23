@@ -6,6 +6,7 @@ with auto-registration and status monitoring.
 """
 
 import os
+import shlex
 import time
 import json
 import logging
@@ -193,9 +194,9 @@ class AgentManager:
             logger.info(f"Starting agent server with command: {command}")
             
             # Start the server process
+            cmd_args = shlex.split(command) if isinstance(command, str) else command
             process = subprocess.Popen(
-                command,
-                shell=True,
+                cmd_args,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 universal_newlines=True
