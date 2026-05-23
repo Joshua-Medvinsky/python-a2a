@@ -23,16 +23,19 @@ from ..exceptions import A2AImportError, A2ARequestError, A2AStreamingError
 from .ui_templates import AGENT_INDEX_HTML, JSON_HTML_TEMPLATE
 
 
-def create_flask_app(agent: BaseA2AServer) -> Flask:
+def create_flask_app(agent: BaseA2AServer, api_key: Optional[str] = None) -> Flask:
     """
     Create a Flask application that serves an A2A agent
-    
+
     Args:
         agent: The A2A agent server
-        
+        api_key: Optional bearer token. When set, all POST/mutating routes require
+                 an ``Authorization: Bearer <api_key>`` header; requests without a
+                 valid token receive a 401 response.
+
     Returns:
         A Flask application
-        
+
     Raises:
         A2AImportError: If Flask is not installed
     """
@@ -41,8 +44,17 @@ def create_flask_app(agent: BaseA2AServer) -> Flask:
             "Flask is not installed. "
             "Install it with 'pip install flask'"
         )
-    
+
     app = Flask(__name__)
+
+    def _check_api_key():
+        """Return a 401 Response if api_key is configured and not matched, else None."""
+        if not api_key:
+            return None
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header == f"Bearer {api_key}":
+            return None
+        return jsonify({"error": "Unauthorized", "message": "Valid Authorization: Bearer <token> header required"}), 401
     
     # Allow CORS for all routes
     @app.after_request
@@ -187,10 +199,13 @@ def create_flask_app(agent: BaseA2AServer) -> Flask:
     def handle_streaming_request():
         """
         Handle streaming requests.
-        
+
         This endpoint enables Server-Sent Events (SSE) streaming from the agent.
         It uses the agent's stream_response method if it implements it.
         """
+        auth_error = _check_api_key()
+        if auth_error:
+            return auth_error
         try:
             # CORS for streaming - important for browser compatibility
             if request.method == 'OPTIONS':
@@ -382,6 +397,9 @@ def create_flask_app(agent: BaseA2AServer) -> Flask:
             # Return error response for any other exception
             return jsonify({"error": str(e)}), 500
     
+    # Store the auth checker on the app so setup_routes implementations can use it
+    app.check_api_key = _check_api_key  # type: ignore[attr-defined]
+
     # Only AFTER registering our enhanced routes, set up the agent's routes
     if hasattr(agent, 'setup_routes'):
         agent.setup_routes(app)
@@ -390,6 +408,9 @@ def create_flask_app(agent: BaseA2AServer) -> Flask:
     @app.route("/a2a", methods=["POST"])
     def handle_a2a_request() -> Union[Response, tuple]:
         """Handle A2A protocol requests"""
+        auth_error = _check_api_key()
+        if auth_error:
+            return auth_error
         try:
             data = request.json
             

@@ -341,6 +341,9 @@ class A2AServer(BaseA2AServer):
     
     def setup_routes(self, app):
         """Setup Flask routes for A2A endpoints"""
+        # Retrieve the auth checker injected by create_flask_app, or a no-op fallback
+        _check_auth = getattr(app, "check_api_key", lambda: None)
+
         # Root endpoint for both GET and POST
         @app.route("/", methods=["GET"])
         def a2a_root_get():
@@ -352,10 +355,13 @@ class A2AServer(BaseA2AServer):
                 "protocol": "a2a",
                 "capabilities": self.agent_card.capabilities
             })
-            
+
         @app.route("/", methods=["POST"])
         def a2a_root_post():
             """Root endpoint for A2A (POST) - handle message in appropriate format"""
+            auth_error = _check_auth()
+            if auth_error:
+                return auth_error
             try:
                 data = request.json
                 
@@ -442,6 +448,9 @@ class A2AServer(BaseA2AServer):
         @app.route("/a2a/tasks/send", methods=["POST"])
         def a2a_tasks_send():
             """Handle POST request to create or update a task"""
+            auth_error = _check_auth()
+            if auth_error:
+                return auth_error
             try:
                 # Parse JSON data
                 request_data = request.json
@@ -596,6 +605,9 @@ class A2AServer(BaseA2AServer):
         @app.route("/a2a/tasks/cancel", methods=["POST"])
         def a2a_tasks_cancel():
             """Handle POST request to cancel a task"""
+            auth_error = _check_auth()
+            if auth_error:
+                return auth_error
             try:
                 # Parse JSON data
                 request_data = request.json
