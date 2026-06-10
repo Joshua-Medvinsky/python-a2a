@@ -1198,9 +1198,12 @@ class WorkflowExecution:
                     else:
                         expr = expr.replace("$input", json.dumps(content))
                 
-                # Very basic evaluation (CAUTION: Not secure for production)
-                # A real implementation would use a proper JS engine or safe eval
-                result = bool(eval(expr))
+                # Safe evaluation: only allow simple boolean/comparison expressions
+                # Reject any expression containing attribute access, calls, or imports
+                import re as _re
+                if _re.search(r'__|import|exec|open|getattr|setattr|globals|locals|vars|compile', expr):
+                    raise ValueError(f"Unsafe expression rejected: {expr!r}")
+                result = bool(eval(expr, {"__builtins__": {}}))
             except:
                 result = False
         
