@@ -23,6 +23,7 @@ _SAFE_AST_NODES = (
     ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE,
     ast.In, ast.NotIn, ast.Add, ast.Sub, ast.Mult, ast.Div,
     ast.Mod, ast.UAdd, ast.USub, ast.List, ast.Tuple,
+    ast.Load,  # context marker for list/tuple literals — safe; ast.Name is still excluded
 )
 
 
@@ -44,7 +45,10 @@ def _safe_eval_expr(expr: str) -> bool:
                 type(node).__name__, expr,
             )
             return False
-    return bool(eval(compile(tree, '<condition>', 'eval'), {"__builtins__": {}}))
+    try:
+        return bool(eval(compile(tree, '<condition>', 'eval'), {"__builtins__": {}}))
+    except Exception:
+        return False
 
 from ..models.workflow import (
     Workflow, WorkflowNode, WorkflowEdge, NodeType, EdgeType
