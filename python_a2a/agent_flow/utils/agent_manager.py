@@ -193,9 +193,10 @@ class AgentManager:
             logger.info(f"Starting agent server with command: {command}")
             
             # Start the server process
+            import shlex as _shlex
             process = subprocess.Popen(
-                command,
-                shell=True,
+                _shlex.split(command) if isinstance(command, str) else command,
+                shell=False,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 universal_newlines=True
